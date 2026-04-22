@@ -1,0 +1,30 @@
+services:
+  simulator:
+    build: .
+    image: traffic-simulator:latest
+    container_name: traffic-simulator
+    restart: unless-stopped
+    # init: true — Docker injects tini as PID 1 so orphaned Chromium
+    # processes are reaped properly on shutdown.
+    init: true
+    ports:
+      # 0.0.0.0 binding: WSL2 NAT mode doesn't forward 127.0.0.1 to Windows host.
+      # WSL2 auto-forwards 0.0.0.0 ports via localhost on Windows.
+      - "7878:7878"
+    volumes:
+      # config.json persists URL list and settings across restarts.
+      - ./config.json:/app/config.json
+      - logs:/app/logs
+    # Chromium uses /dev/shm for inter-process shared memory.
+    # Without this, renderer processes crash under load.
+    shm_size: '1gb'
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2g
+        reservations:
+          memory: 512m
+
+volumes:
+  logs:

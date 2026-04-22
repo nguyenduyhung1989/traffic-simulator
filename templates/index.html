@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traffic Simulator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117;
+    color: #e1e4e8;
+    min-height: 100vh;
+    padding: 32px 20px;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; }
+
+  h1 {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #58a6ff;
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+  }
+  .subtitle { font-size: 0.85rem; color: #6e7681; margin-bottom: 28px; }
+
+  /* ── SETTINGS ROW ─────────────── */
+  .settings-row {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .setting-group {
+    display: flex; flex-direction: column; gap: 5px;
+    flex: 1; min-width: 130px;
+  }
+  .setting-group label {
+    font-size: 0.72rem; color: #8b949e;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .setting-group input[type="number"] {
+    background: #161b22; border: 1px solid #30363d; color: #e1e4e8;
+    padding: 8px 10px; border-radius: 6px; font-size: 0.88rem;
+    width: 100%; outline: none; transition: border-color 0.15s;
+  }
+  .setting-group input[type="number"]:focus { border-color: #58a6ff; }
+
+  /* ── URL PANEL ────────────────── */
+  .panel {
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 10px; padding: 18px; margin-bottom: 18px;
+  }
+  .panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+  }
+  .panel-title {
+    font-size: 0.85rem; font-weight: 600; color: #8b949e;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .count-badge {
+    font-size: 0.73rem; background: #21262d; color: #58a6ff;
+    padding: 3px 10px; border-radius: 12px; font-weight: 600;
+  }
+
+  /* column headers */
+  .url-cols {
+    display: grid;
+    grid-template-columns: 22px 1fr 100px 28px;
+    gap: 8px;
+    padding: 0 0 6px 0;
+    border-bottom: 1px solid #21262d;
+    margin-bottom: 8px;
+  }
+  .col-label {
+    font-size: 0.68rem; color: #484f58;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    align-self: center;
+  }
+  .col-label.center { text-align: center; }
+
+  .url-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .url-row {
+    display: grid;
+    grid-template-columns: 22px 1fr 100px 28px;
+    gap: 8px;
+    align-items: center;
+  }
+  .url-num {
+    font-size: 0.7rem; color: #484f58; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .url-input {
+    background: #0d1117; border: 1px solid #21262d; color: #e1e4e8;
+    padding: 8px 10px; border-radius: 6px;
+    font-size: 0.82rem; font-family: 'Cascadia Code','Consolas',monospace;
+    outline: none; transition: border-color 0.15s, background 0.15s;
+    width: 100%;
+  }
+  .url-input:focus { border-color: #388bfd; background: #0f1823; }
+  .url-input.has-value { border-color: #2d6a2d; }
+  .url-input::placeholder { color: #3d4450; }
+
+  .views-input {
+    background: #0d1117; border: 1px solid #21262d; color: #e1e4e8;
+    padding: 8px 8px; border-radius: 6px;
+    font-size: 0.82rem; font-family: 'Cascadia Code','Consolas',monospace;
+    outline: none; transition: border-color 0.15s;
+    width: 100%; text-align: center;
+  }
+  .views-input:focus { border-color: #388bfd; }
+  .views-input.has-value { border-color: #794900; color: #e3b341; }
+  .views-input::placeholder { color: #3d4450; font-size: 0.72rem; }
+
+  .btn-clear-url {
+    background: none; border: none; color: #6e7681; cursor: pointer;
+    font-size: 1rem; padding: 4px; border-radius: 4px;
+    line-height: 1; transition: color 0.15s;
+  }
+  .btn-clear-url:hover { color: #f85149; }
+
+  /* ── ACTIONS ──────────────────── */
+  .actions {
+    display: flex; gap: 10px; margin-bottom: 18px;
+    flex-wrap: wrap; align-items: center;
+  }
+  .btn {
+    padding: 10px 22px; border-radius: 7px; border: none;
+    font-size: 0.88rem; font-weight: 600; cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-run  { background: #238636; color: #fff; }
+  .btn-run:hover:not(:disabled) { background: #2ea043; }
+  .btn-stop { background: #da3633; color: #fff; display: none; }
+  .btn-stop:hover:not(:disabled) { background: #f85149; }
+  .btn-clear { background: #21262d; color: #8b949e; }
+  .btn-clear:hover { background: #30363d; color: #e1e4e8; }
+  .status-text { font-size: 0.82rem; color: #6e7681; margin-left: auto; }
+  .status-text.running { color: #3fb950; }
+  .status-text.error   { color: #f85149; }
+  .status-text.done    { color: #58a6ff; }
+
+  /* ── PROGRESS ─────────────────── */
+  .progress-wrap { height: 3px; background: #21262d; border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
+  .progress-bar  { height: 100%; width: 0%; background: linear-gradient(90deg,#238636,#3fb950); transition: width .3s; border-radius: 2px; }
+  .progress-bar.indeterminate { width: 30%; animation: slide 1.5s ease-in-out infinite; }
+  @keyframes slide { 0%{transform:translateX(-130%)} 100%{transform:translateX(430%)} }
+
+  /* ── TERMINAL ─────────────────── */
+  .terminal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .terminal-label { font-size: 0.72rem; color: #6e7681; text-transform: uppercase; letter-spacing: 0.5px; }
+  .btn-copy-log {
+    font-size: 0.7rem; color: #6e7681; background: #21262d;
+    border: 1px solid #30363d; border-radius: 4px; padding: 3px 10px;
+    cursor: pointer; transition: color 0.15s;
+  }
+  .btn-copy-log:hover { color: #e1e4e8; }
+  #terminal {
+    background: #010409; border: 1px solid #21262d; border-radius: 8px;
+    padding: 14px; font-family: 'Cascadia Code','Consolas',monospace;
+    font-size: 0.77rem; line-height: 1.65; color: #c9d1d9;
+    height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+  }
+  #terminal .ln-err  { color: #f85149; }
+  #terminal .ln-ok   { color: #3fb950; }
+  #terminal .ln-info { color: #58a6ff; }
+  #terminal .ln-warn { color: #e3b341; }
+  #terminal .ln-dim  { color: #484f58; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>🚀 Traffic Simulator</h1>
+  <p class="subtitle">Dán link vào các ô, nhập số view nếu muốn cố định (để trống = random). Bấm Run là bay.</p>
+
+  <!-- GLOBAL SETTINGS -->
+  <div class="settings-row">
+    <div class="setting-group">
+      <label>Views min (khi để trống)</label>
+      <input type="number" id="viewMin" value="{{ config.get('url_views_range', [100,300])[0] }}" min="1" max="9999">
+    </div>
+    <div class="setting-group">
+      <label>Views max (khi để trống)</label>
+      <input type="number" id="viewMax" value="{{ config.get('url_views_range', [100,300])[1] }}" min="1" max="9999">
+    </div>
+    <div class="setting-group">
+      <label>Workers (luồng song song)</label>
+      <input type="number" id="workers" value="{{ config.get('concurrency', {}).get('num_workers', 20) }}" min="1" max="100">
+    </div>
+  </div>
+
+  <!-- URL PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Danh sách URL</span>
+      <span class="count-badge" id="urlCount">0 / 10</span>
+    </div>
+    <!-- column headers -->
+    <div class="url-cols">
+      <span></span>
+      <span class="col-label">URL bài viết</span>
+      <span class="col-label center">Số view</span>
+      <span></span>
+    </div>
+    <div class="url-list" id="urlList"></div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="actions">
+    <button class="btn btn-run"  id="btnRun"  onclick="startRun()">▶ Run</button>
+    <button class="btn btn-stop" id="btnStop" onclick="stopRun()">■ Stop</button>
+    <button class="btn btn-clear" onclick="clearAll()">✕ Xóa hết</button>
+    <span class="status-text" id="statusText">Sẵn sàng</span>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+
+  <!-- TERMINAL -->
+  <div class="terminal-header">
+    <span class="terminal-label">Output</span>
+    <button class="btn-copy-log" onclick="copyLog()">Copy log</button>
+  </div>
+  <div id="terminal"><span class="ln-dim">-- chờ lệnh --</span></div>
+
+</div>
+<script>
+const NUM_SLOTS  = 10;
+const SAVED_KEY  = 'ts_entries_v2';
+const initialUrls = {{ urls | tojson }};
+const urlViewCounts = {{ config.get('url_view_counts', {}) | tojson }};
+
+let eventSource = null;
+
+// ── RENDER ───────────────────────────────────────────────────
+function renderSlots(entries = []) {
+  const list = document.getElementById('urlList');
+  list.innerHTML = '';
+  for (let i = 0; i < NUM_SLOTS; i++) {
+    const e   = entries[i] || {};
+    const url = e.url   || '';
+    const views = e.views != null ? e.views : '';
+    const row = document.createElement('div');
+    row.className = 'url-row';
+    row.innerHTML = `
+      <span class="url-num">${i + 1}</span>
+      <input type="text"   class="url-input${url ? ' has-value' : ''}"
+             placeholder="https://..." value="${esc(url)}" data-idx="${i}"
+             oninput="onUrlInput(this)" onpaste="onUrlPaste(event,this)">
+      <input type="number" class="views-input${views !== '' ? ' has-value' : ''}"
+             placeholder="auto" min="1" max="99999" value="${esc(String(views))}" data-idx="${i}"
+             oninput="onViewsInput(this)">
+      <button class="btn-clear-url" onclick="clearSlot(${i})">×</button>
+    `;
+    list.appendChild(row);
+  }
+  updateCount();
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function getUrlInputs()   { return [...document.querySelectorAll('.url-input')]; }
+function getViewsInputs() { return [...document.querySelectorAll('.views-input')]; }
+
+function getEntries() {
+  const urls  = getUrlInputs();
+  const views = getViewsInputs();
+  return urls
+    .map((el, i) => ({ url: el.value.trim(), views: views[i].value.trim() || null }))
+    .filter(e => e.url);
+}
+
+function updateCount() {
+  document.getElementById('urlCount').textContent =
+    `${getUrlInputs().filter(el => el.value.trim()).length} / ${NUM_SLOTS}`;
+}
+
+function onUrlInput(el) {
+  el.classList.toggle('has-value', el.value.trim() !== '');
+  saveToStorage(); updateCount();
+}
+function onViewsInput(el) {
+  el.classList.toggle('has-value', el.value.trim() !== '');
+  saveToStorage();
+}
+
+function onUrlPaste(e, el) {
+  const text  = (e.clipboardData || window.clipboardData).getData('text');
+  const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (lines.length <= 1) return;
+  e.preventDefault();
+  const inputs = getUrlInputs();
+  const start  = parseInt(el.dataset.idx);
+  lines.forEach((line, off) => {
+    const t = inputs[start + off];
+    if (t) { t.value = line; t.classList.toggle('has-value', !!line); }
+  });
+  saveToStorage(); updateCount();
+}
+
+function clearSlot(i) {
+  getUrlInputs()[i].value   = ''; getUrlInputs()[i].classList.remove('has-value');
+  getViewsInputs()[i].value = ''; getViewsInputs()[i].classList.remove('has-value');
+  saveToStorage(); updateCount();
+}
+function clearAll() {
+  getUrlInputs().forEach(el  => { el.value=''; el.classList.remove('has-value'); });
+  getViewsInputs().forEach(el => { el.value=''; el.classList.remove('has-value'); });
+  saveToStorage(); updateCount();
+}
+
+function saveToStorage() {
+  const entries = getUrlInputs().map((el, i) => ({
+    url: el.value.trim(), views: getViewsInputs()[i].value.trim() || null
+  }));
+  localStorage.setItem(SAVED_KEY, JSON.stringify(entries));
+}
+function loadFromStorage() {
+  try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch { return []; }
+}
+
+// ── TERMINAL ─────────────────────────────────────────────────
+function termWrite(line) {
+  const t = document.getElementById('terminal');
+  const atBottom = t.scrollHeight - t.scrollTop <= t.clientHeight + 40;
+  const span = document.createElement('span');
+  const cls  = classifyLine(line);
+  if (cls) span.className = cls;
+  span.textContent = line + '\n';
+  t.appendChild(span);
+  if (atBottom) t.scrollTop = t.scrollHeight;
+}
+function termClear() { document.getElementById('terminal').innerHTML = ''; }
+function classifyLine(l) {
+  if (/❌|lỗi|error|fail/i.test(l))            return 'ln-err';
+  if (/✅|thành công|success|xong/i.test(l))    return 'ln-ok';
+  if (/═{3,}|📊|🎉|fixed/i.test(l))            return 'ln-info';
+  if (/⚠|warn/i.test(l))                        return 'ln-warn';
+  return '';
+}
+function copyLog() {
+  navigator.clipboard.writeText(document.getElementById('terminal').innerText).then(() => {
+    const btn = document.querySelector('.btn-copy-log');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy log', 1500);
+  });
+}
+
+// ── RUN / STOP ────────────────────────────────────────────────
+async function startRun() {
+  const entries = getEntries();
+  if (!entries.length) { setStatus('Chưa có URL nào!', 'error'); return; }
+
+  const payload = {
+    url_entries: entries,
+    viewMin:  parseInt(document.getElementById('viewMin').value)  || 100,
+    viewMax:  parseInt(document.getElementById('viewMax').value)  || 300,
+    workers:  parseInt(document.getElementById('workers').value)  || 20,
+  };
+
+  termClear();
+  setRunning(true);
+  setStatus('Đang lưu config…', 'running');
+  setProgress(true);
+
+  if (eventSource) { eventSource.close(); eventSource = null; }
+
+  const res = await fetch('/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) { termWrite('❌ Lỗi lưu config'); setRunning(false); setProgress(false); return; }
+
+  setStatus('Đang chạy…', 'running');
+  eventSource = new EventSource('/stream');
+  eventSource.onmessage = (e) => {
+    const line = JSON.parse(e.data);
+    if (line === '__BUSY__') {
+      termWrite('⚠ Đang có tiến trình khác chạy. Bấm Stop trước.');
+      setRunning(false); setProgress(false); setStatus('Busy', 'error');
+      eventSource.close(); eventSource = null;
+    } else if (line.startsWith('__EXIT__')) {
+      const code = parseInt(line.replace('__EXIT__', ''));
+      eventSource.close(); eventSource = null;
+      setRunning(false); setProgress(false);
+      setStatus(code === 0 ? '✅ Hoàn thành!' : `Kết thúc (code ${code})`, code === 0 ? 'done' : 'error');
+    } else {
+      termWrite(line);
+    }
+  };
+  eventSource.onerror = () => {
+    eventSource.close(); eventSource = null;
+    setRunning(false); setProgress(false);
+    setStatus('Kết nối bị ngắt', 'error');
+  };
+}
+
+async function stopRun() {
+  if (eventSource) { eventSource.close(); eventSource = null; }
+  await fetch('/stop', { method: 'POST' });
+  setRunning(false); setProgress(false); setStatus('Đã dừng', 'error');
+  termWrite('\n⛔ Đã dừng bởi người dùng.');
+}
+
+function setRunning(on) {
+  document.getElementById('btnRun').disabled  = on;
+  document.getElementById('btnRun').style.display  = on ? 'none'         : 'inline-flex';
+  document.getElementById('btnStop').style.display = on ? 'inline-flex'  : 'none';
+}
+function setStatus(msg, cls) {
+  const el = document.getElementById('statusText');
+  el.textContent = msg;
+  el.className   = 'status-text' + (cls ? ' ' + cls : '');
+}
+function setProgress(active) {
+  const bar = document.getElementById('progressBar');
+  if (active) bar.classList.add('indeterminate');
+  else { bar.classList.remove('indeterminate'); bar.style.width = '0'; }
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+(function init() {
+  const saved   = loadFromStorage();
+  const merged  = Array.from({ length: NUM_SLOTS }, (_, i) => {
+    const url   = initialUrls[i] || saved[i]?.url   || '';
+    const views = urlViewCounts[url] ?? saved[i]?.views ?? null;
+    return { url, views };
+  });
+  renderSlots(merged);
+})();
+</script>
+</body>
+</html>

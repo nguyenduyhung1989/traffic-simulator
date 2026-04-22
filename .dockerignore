@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.git
+.gitignore
+run.bat
+README.md
+LESSONS_LEARNED.md
+logs/
+.env

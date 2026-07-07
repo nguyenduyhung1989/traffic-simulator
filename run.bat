@@ -15,6 +15,6 @@ echo Bam Ctrl+C de dung.
 echo.
 
 start "" http://localhost:7878
-"E:\Antigravity\rag-knowledge-base\.venv\Scripts\python.exe" app.py
+python app.py
 
 pause
